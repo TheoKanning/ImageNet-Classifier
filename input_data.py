@@ -1,6 +1,6 @@
 import os.path
 import io
-import urllib
+import urllib2
 from PIL import Image
 from resizeimage import resizeimage
 
@@ -20,16 +20,16 @@ def download_image(url, file_path, file_name):
     :param url: url of image
     :param file_path: path to folder
     :param file_name: final name of stored file
-    :return: true if successful, false otherwise
+    :return: true if successful or file already downloaded, false otherwise
     """
     download_path = os.path.join(file_path, file_name)
     if os.path.isfile(download_path):
-        return False
+        return True
 
     print "Downloading from " + url
 
     try:
-        fd = urllib.urlopen(url)
+        fd = urllib2.urlopen(url, timeout=3)
         image_file = io.BytesIO(fd.read())
         image = Image.open(image_file)
 
@@ -69,13 +69,9 @@ def download_class_images(class_id, num_images, work_directory):
 
     links_url = IMAGENET_LINKS_URL + class_id
 
-    # count images already in folder
-    previous_images = os.listdir(class_folder_path)
-    images = len(previous_images)
+    images = 0
 
-    print "{0} images found for class {1}".format(images, class_id)
-
-    for url in urllib.urlopen(links_url):
+    for url in urllib2.urlopen(links_url):
         if images >= num_images:
             break
 
@@ -95,6 +91,7 @@ def download_dataset(class_ids, num_images):
     """
 
     for class_id in class_ids:
+        print "Starting download for " + class_id
         download_class_images(class_id, num_images, IMAGE_DIRECTORY)
 
 
