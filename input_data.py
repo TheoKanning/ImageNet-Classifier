@@ -1,6 +1,7 @@
 import os.path
 import io
 import urllib2
+from httplib import HTTPException
 from PIL import Image
 from resizeimage import resizeimage
 
@@ -14,17 +15,13 @@ IMAGE_HEIGHT = 224
 IMAGE_WIDTH = 224
 
 
-def download_image(url, file_path, file_name):
+def download_image(url, download_path):
     """
-    Downloads a single image from a url to a specific path if it's not already in the specified folder
+    Downloads a single image from a url to a specific path
     :param url: url of image
-    :param file_path: path to folder
-    :param file_name: final name of stored file
-    :return: true if successful or file already downloaded, false otherwise
+    :param download_path: full path of saved image file
+    :return: true if successfully downloaded, false otherwise
     """
-    download_path = os.path.join(file_path, file_name)
-    if os.path.isfile(download_path):
-        return True
 
     print "Downloading from " + url
 
@@ -39,7 +36,7 @@ def download_image(url, file_path, file_name):
 
         resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
         resized.save(download_path, resized.format)
-    except IOError, e:
+    except (IOError, HTTPException) as e:
         print e
         return False
 
@@ -69,14 +66,20 @@ def download_class_images(class_id, num_images, work_directory):
 
     links_url = IMAGENET_LINKS_URL + class_id
 
-    images = 0
+    previous_images = os.listdir(class_folder_path)
+    images = len(previous_images)
+    print "{0} images found for class {1}".format(images, class_id)
 
     for url in urllib2.urlopen(links_url):
         if images >= num_images:
             break
-
         image_name = url.rsplit('/')[-1]
-        if download_image(url, class_folder_path, image_name):
+        download_path = os.path.join(class_folder_path, image_name)
+
+        if os.path.isfile(download_path):
+            continue
+
+        if download_image(url, download_path):
             images += 1
             print images
 
