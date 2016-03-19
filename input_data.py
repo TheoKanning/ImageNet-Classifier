@@ -1,4 +1,5 @@
 import os.path
+import io
 import urllib
 from PIL import Image
 from resizeimage import resizeimage
@@ -28,29 +29,27 @@ def download_image(url, file_path, file_name):
     print "Downloading from " + url
 
     try:
-        urllib.urlretrieve(url, download_path)
+        fd = urllib.urlopen(url)
+        image_file = io.BytesIO(fd.read())
+        image = Image.open(image_file)
+
+        size = image.size
+        if size[0] < IMAGE_WIDTH or size[1] < IMAGE_HEIGHT:  # Image too small
+            return False
+
+        resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        resized.save(download_path, resized.format)
     except IOError, e:
         print e
         return False
 
-    # Check if photo is valid, i.e. not a single pixel or "photo unavailable" image
+    # Check if photo meets minimum size requirement
     size = os.path.getsize(download_path)
     if size < MINIMUM_FILE_SIZE:
         os.remove(download_path)
         print "Invalid Image: " + url
         return False
 
-    try:
-        with open(download_path, 'r+b') as f:
-            with Image.open(f) as image:
-                # if not resizeimage.resize_cover.validate(image, (IMAGE_WIDTH, IMAGE_HEIGHT)):  # Image too small
-                #     os.remove(download_path)
-                #     return False
-                resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
-                resized.save(download_path, resized.format)
-    except IOError:
-        os.remove(download_path)
-        return False
     return True
 
 
