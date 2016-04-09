@@ -1,7 +1,7 @@
 import input_data
 import numpy as np
 
-NUM_IMAGES = 100
+NUM_IMAGES = 10
 
 classes = np.array([["dog", "n02084071"],
                     ["cat", "n02121808"],

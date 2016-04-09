@@ -76,6 +76,7 @@ def download_class_images(class_id, num_images, work_directory):
     for url in urllib2.urlopen(links_url):
         if images >= num_images:
             break
+        url = url[:url.find('?')]  # remove all query strings
         image_name = url.rsplit('/')[-1]
         image_name = image_name.strip('\n\r')
         download_path = os.path.join(class_folder_path, image_name)
@@ -133,10 +134,25 @@ def load_all_images(class_ids, num_images):
     :param num_images: maximum number of images to return per class, actual number may be smaller
     :return: list of images for each class, list of labels
     """
-    #
-    # assert images.shape[0] == labels.shape[0], (
-    #     'images.shape: %s labels.shape: %s' % (images.shape,
-    #                                            labels.shape))
+
+    num_classes = len(class_ids)
+    all_images = np.empty(0)
+    all_labels = np.empty(0)
+
+    for index, class_id in enumerate(class_ids):
+        class_path = os.path.join(IMAGE_DIRECTORY, class_id)
+        files = [f for f in os.listdir(class_path) if os.path.isfile(os.path.join(class_path, f))]
+        num_class_files = min(len(files), num_images)
+        images = np.empty(num_class_files, dtype=object)
+        labels = np.empty(num_class_files, dtype=object)
+        for n in range(0, num_class_files):
+            images[n] = load_image_as_array(os.path.join(class_path, files[n]))
+            labels[n] = create_one_hot_vector(index, num_classes)
+
+        np.append(all_images, images, axis=0)
+        np.append(all_labels, labels, axis=0)
+
+    return  all_images, all_labels
 
 
 class DataSet(object):
@@ -223,7 +239,7 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
 
 
 def main():
-    download_class_images("n02084071", 15, IMAGE_DIRECTORY)
+    load_all_images(["n02084071"], 15)
 
 
 if __name__ == "__main__":
