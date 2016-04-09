@@ -4,6 +4,7 @@ import urllib2
 from httplib import HTTPException
 from PIL import Image
 from resizeimage import resizeimage
+import numpy as np
 
 # Minimum size will eliminate single pixel and flickr missing photo images
 MINIMUM_FILE_SIZE = 5000
@@ -35,7 +36,7 @@ def download_image(url, download_path):
             return False
 
         resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
-        resized.save(download_path, resized.format)
+        resized.save(download_path, 'jpeg', icc_profile=resized.info.get('icc_profile'))
     except (IOError, HTTPException) as e:
         print e
         return False
@@ -69,11 +70,14 @@ def download_class_images(class_id, num_images, work_directory):
     previous_images = os.listdir(class_folder_path)
     images = len(previous_images)
     print "{0} images found for class {1}".format(images, class_id)
+    if images >= num_images:
+        return
 
     for url in urllib2.urlopen(links_url):
         if images >= num_images:
             break
         image_name = url.rsplit('/')[-1]
+        image_name = image_name.strip('\n\r')
         download_path = os.path.join(class_folder_path, image_name)
 
         if os.path.isfile(download_path):
@@ -92,10 +96,130 @@ def download_dataset(class_ids, num_images):
     :param class_ids: list of ImageNet ids
     :param num_images: maximum number of images to download in each set
     """
-
     for class_id in class_ids:
         print "Starting download for " + class_id
         download_class_images(class_id, num_images, IMAGE_DIRECTORY)
+
+
+def load_image_as_array(filepath):
+    """
+    Loads a single image and returns it as an array
+    :param filepath: path to image file
+    :return: array of image with size IMAGE_WIDTH*IMAGE_HEIGHT*3
+    """
+    im = Image.open(filepath)
+    return im.load()
+
+
+def create_one_hot_vector(index, length):
+    """
+    Creates a one-hot vector with that specified length and a 1 at the specified index
+    :param index: index of 1 in vector
+    :param length: length of vector
+    :return: one-hot vector
+    """
+    assert length > 0, "One-hot vector length must be a positive number"
+    assert 0 <= index < length, "Index (%s) must be between 0 and length(%s)" % (index, length)
+
+    vector = np.zeros(length)
+    vector[index] = 1
+    return vector
+
+
+def load_all_images(class_ids, num_images):
+    """
+    Loads images from the given classes and returns them in an array, along with a list of one-hot vector labels
+    :param class_ids: ImageNet ids of classes to be retrieved
+    :param num_images: maximum number of images to return per class, actual number may be smaller
+    :return: list of images for each class, list of labels
+    """
+    #
+    # assert images.shape[0] == labels.shape[0], (
+    #     'images.shape: %s labels.shape: %s' % (images.shape,
+    #                                            labels.shape))
+
+
+class DataSet(object):
+    def __init__(self, images, labels):
+        """Construct a DataSet using the given images and labels
+        """
+
+        assert images.shape[0] == labels.shape[0], (
+            'images.shape: %s labels.shape: %s' % (images.shape,
+                                                   labels.shape))
+        self._num_examples = images.shape[0]
+
+        # Convert shape from [num examples, rows, columns, depth]
+        # to [num examples, rows*columns, 3] (assuming depth == 3)
+        assert images.shape[3] == 3
+        images = images.reshape(images.shape[0],
+                                images.shape[1] * images.shape[2], 3)
+
+        self._images = images
+        self._labels = labels
+        self._epochs_completed = 0
+        self._index_in_epoch = 0
+
+    @property
+    def images(self):
+        return self._images
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def num_examples(self):
+        return self._num_examples
+
+    @property
+    def epochs_completed(self):
+        return self._epochs_completed
+
+    def next_batch(self, batch_size):
+        """Return the next `batch_size` examples from this data set."""
+        start = self._index_in_epoch
+        self._index_in_epoch += batch_size
+        if self._index_in_epoch > self._num_examples:
+            # Finished epoch
+            self._epochs_completed += 1
+            # Shuffle the data
+            perm = np.arange(self._num_examples)
+            np.random.shuffle(perm)
+            self._images = self._images[perm]
+            self._labels = self._labels[perm]
+            # Start next epoch
+            start = 0
+            self._index_in_epoch = batch_size
+            assert batch_size <= self._num_examples
+        end = self._index_in_epoch
+        return self._images[start:end], self._labels[start:end]
+
+
+def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction=0.1):
+    """
+    Creates training, validation, and test datasets from the given class ids using the desired proportions
+    :param class_ids: ImageNet class ids of all classes to include
+    :param num_samples: maximum sample images for each class
+    :param val_fraction: fraction of images to put into validation set
+    :param test_fraction: fraction of images to put into test set
+    :return: training_set, validation_set, test_dataset
+    """
+
+    assert 0 <= val_fraction <= 0.25, "Validation fraction %s must be between 0 and 0.25" % val_fraction
+    assert 0 <= test_fraction <= 0.25, "Test fraction %s must be between 0 and 0.25" % test_fraction
+
+    all_images, all_labels = load_all_images(class_ids, num_samples)
+
+    total_num_images = all_images[0]
+    # Shuffle all images before splitting
+    perm = np.arange(total_num_images)
+    np.random.shuffle(perm)
+    all_images = all_images[perm]
+    all_labels = all_labels[perm]
+
+    validation_size = int(total_num_images * val_fraction)
+    test_size = int(total_num_images * test_fraction)
 
 
 def main():
