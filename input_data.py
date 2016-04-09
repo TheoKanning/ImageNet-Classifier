@@ -4,6 +4,7 @@ import urllib2
 from httplib import HTTPException
 from PIL import Image
 from resizeimage import resizeimage
+from scipy import misc
 import numpy as np
 
 # Minimum size will eliminate single pixel and flickr missing photo images
@@ -109,7 +110,7 @@ def load_image_as_array(filepath):
     :return: array of image with size IMAGE_WIDTH*IMAGE_HEIGHT*3
     """
     im = Image.open(filepath)
-    return im.load()
+    return np.array(im)
 
 
 def create_one_hot_vector(index, length):
@@ -136,23 +137,19 @@ def load_all_images(class_ids, num_images):
     """
 
     num_classes = len(class_ids)
-    all_images = np.empty(0)
-    all_labels = np.empty(0)
+    all_images = []
+    all_labels = []
 
     for index, class_id in enumerate(class_ids):
         class_path = os.path.join(IMAGE_DIRECTORY, class_id)
         files = [f for f in os.listdir(class_path) if os.path.isfile(os.path.join(class_path, f))]
         num_class_files = min(len(files), num_images)
-        images = np.empty(num_class_files, dtype=object)
-        labels = np.empty(num_class_files, dtype=object)
         for n in range(0, num_class_files):
-            images[n] = load_image_as_array(os.path.join(class_path, files[n]))
-            labels[n] = create_one_hot_vector(index, num_classes)
+            image = load_image_as_array(os.path.join(class_path, files[n]))
+            all_images.append(image)
+            all_labels.append(create_one_hot_vector(index, num_classes))
 
-        np.append(all_images, images, axis=0)
-        np.append(all_labels, labels, axis=0)
-
-    return  all_images, all_labels
+    return np.array(all_images), np.array(all_labels)
 
 
 class DataSet(object):
