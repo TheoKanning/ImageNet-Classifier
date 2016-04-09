@@ -224,7 +224,7 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
 
     all_images, all_labels = load_all_images(class_ids, num_samples)
 
-    total_num_images = all_images[0]
+    total_num_images = len(all_images)
     # Shuffle all images before splitting
     perm = np.arange(total_num_images)
     np.random.shuffle(perm)
@@ -234,9 +234,24 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
     validation_size = int(total_num_images * val_fraction)
     test_size = int(total_num_images * test_fraction)
 
+    validation_images = all_images[:validation_size]
+    validation_labels = all_labels[:validation_size]
+
+    test_images = all_images[validation_size:validation_size + test_size]
+    test_labels = all_labels[validation_size:validation_size + test_size]
+
+    train_images = all_images[validation_size + test_size:]
+    train_labels = all_labels[validation_size + test_size:]
+
+    train_dataset = DataSet(train_images, train_labels)
+    validation_dataset = DataSet(validation_images, validation_labels)
+    test_dataset = DataSet(test_images, test_labels)
+
+    return train_dataset, validation_dataset, test_dataset
+
 
 def main():
-    load_all_images(["n02084071"], 15)
+    create_datasets(["n02084071", "n01503061"], 15)
 
 
 if __name__ == "__main__":
