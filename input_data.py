@@ -2,6 +2,7 @@ import os.path
 import io
 import urllib2
 from httplib import HTTPException
+from ssl import CertificateError
 from PIL import Image
 from resizeimage import resizeimage
 from scipy import misc
@@ -12,9 +13,51 @@ MINIMUM_FILE_SIZE = 5000
 
 IMAGENET_LINKS_URL = "http://www.image-net.org/api/text/imagenet.synset.geturls?wnid="
 IMAGE_DIRECTORY = "ImageNet_data/"
+URL_DIRECTORY = os.path.join(IMAGE_DIRECTORY, "bad_urls")
 
 IMAGE_HEIGHT = 224
 IMAGE_WIDTH = 224
+
+
+def is_good_url(url, class_id):
+    """
+    Checks if the given url is not on the class's bad url list
+    :param url: url to be checked
+    :param class_id: ImageNet class is, used to find appropriate list of bad urls
+    :return: True if not on bad url list, False otherwise
+    """
+
+    if not os.path.exists(URL_DIRECTORY):
+        return True
+
+    file_name = class_id + ".txt"
+    file_path = os.path.join(URL_DIRECTORY, file_name)
+
+    if not os.path.exists(file_path):
+        return True
+
+    if url in open(file_path).read():
+        return False
+
+    return True
+
+
+def store_bad_url(url, class_id):
+    """
+    Stores the given url in the class's bad url file
+    :param url: url to be blacklisted
+    :param class_id: class that url corresponds to
+    :return:
+    """
+
+    if not os.path.exists(URL_DIRECTORY):
+        os.mkdir(URL_DIRECTORY)
+
+    file_name = class_id + ".txt"
+    file_path = os.path.join(URL_DIRECTORY, file_name)
+
+    with open(file_path, "a") as urls_file:
+        urls_file.write(url)
 
 
 def download_image(url, download_path):
@@ -38,7 +81,7 @@ def download_image(url, download_path):
 
         resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
         resized.save(download_path, 'jpeg', icc_profile=resized.info.get('icc_profile'))
-    except (IOError, HTTPException) as e:
+    except (IOError, HTTPException, CertificateError) as e:
         print e
         return False
 
@@ -78,6 +121,9 @@ def download_class_images(class_id, num_images, work_directory):
         if images >= num_images:
             break
         url = url[:url.find('?')]  # remove all query strings
+        if not is_good_url(url, class_id):
+            continue
+
         image_name = url.rsplit('/')[-1]
         image_name = image_name.strip('\n\r')
         download_path = os.path.join(class_folder_path, image_name)
@@ -88,7 +134,8 @@ def download_class_images(class_id, num_images, work_directory):
         if download_image(url, download_path):
             images += 1
             print images
-
+        else:
+            store_bad_url(url, class_id)
     print "{0} total images for {1}".format(images, class_id)
 
 
