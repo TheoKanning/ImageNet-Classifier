@@ -128,6 +128,9 @@ def download_class_images(class_id, num_images, work_directory):
         image_name = image_name.strip('\n\r')
         download_path = os.path.join(class_folder_path, image_name)
 
+        if ".gif" in image_name:
+            continue
+
         if os.path.isfile(download_path):
             continue
 
@@ -182,6 +185,8 @@ def load_all_images(class_ids, num_images):
     :param num_images: maximum number of images to return per class, actual number may be smaller
     :return: list of images for each class, list of labels
     """
+
+    download_dataset(class_ids, num_images)
 
     num_classes = len(class_ids)
     all_images = []
