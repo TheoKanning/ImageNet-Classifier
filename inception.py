@@ -3,7 +3,7 @@ from input_data import create_datasets
 import numpy as np
 import tensorflow as tf
 
-NUM_IMAGES = 500
+NUM_IMAGES = 10
 
 classes = np.array([["dog", "n02084071"],
                     ["cat", "n02121808"],
@@ -50,7 +50,7 @@ train_dataset, val_dataset, test_dataset = create_datasets(classes[:, 1], num_sa
 num_classes = len(classes)
 
 # Placeholders
-x = tf.placeholder(tf.float32, shape=[input_data.IMAGE_WIDTH, input_data.IMAGE_HEIGHT, 3])
+x = tf.placeholder(tf.float32, shape=[None, input_data.IMAGE_WIDTH * input_data.IMAGE_HEIGHT, 3])
 y_ = tf.placeholder(tf.float32, shape=[None, num_classes])
 
 x_reshaped = tf.reshape(x, [-1, input_data.IMAGE_WIDTH, input_data.IMAGE_HEIGHT, 3])
@@ -98,7 +98,9 @@ for i in range(20000):
         train_accuracy = sess.run(accuracy, feed_dict={
             x: image_batch, y_: label_batch, keep_prob: 1.0})
         print("step %d, training accuracy %g" % (i, train_accuracy))
-    train_step.run(feed_dict={x: image_batch, y_: label_batch, keep_prob: 0.5})
+    else:
+        print("step %d" % i)
+    sess.run(train_step, feed_dict={x: image_batch, y_: label_batch, keep_prob: 0.5})
 
 print("test accuracy %g" % sess.run(accuracy, feed_dict={
     x: test_dataset.images, y_: test_dataset.labels, keep_prob: 1.0}))
