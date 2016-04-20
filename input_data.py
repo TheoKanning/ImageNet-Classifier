@@ -5,7 +5,6 @@ from httplib import HTTPException
 from ssl import CertificateError
 from PIL import Image
 from resizeimage import resizeimage
-from scipy import misc
 import numpy as np
 
 # Minimum size will eliminate single pixel and flickr missing photo images
@@ -92,6 +91,13 @@ def download_image(url, download_path):
         print "Invalid Image: " + url
         return False
 
+    # # Try opening as array to see if there are any errors
+    # try:
+    #     load_image_as_array(download_path)
+    # except ValueError as e:
+    #     os.remove(download_path)
+    #     return False
+
     return True
 
 
@@ -160,6 +166,10 @@ def load_image_as_array(filepath):
     :return: array of image with size IMAGE_WIDTH*IMAGE_HEIGHT*3
     """
     im = Image.open(filepath)
+    if len(np.shape(im)) is 2:
+        ret = np.empty((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=np.uint8)
+        ret[:, :, :] = np.array(im)[:, :, np.newaxis]
+        return ret
     return np.array(im)
 
 
@@ -200,6 +210,8 @@ def load_all_images(class_ids, num_images):
             image = load_image_as_array(os.path.join(class_path, files[n]))
             all_images.append(image)
             all_labels.append(create_one_hot_vector(index, num_classes))
+
+        print os.path.join(class_path, files[n])
 
     return np.array(all_images), np.array(all_labels)
 
@@ -243,6 +255,8 @@ class DataSet(object):
 
     def next_batch(self, batch_size):
         """Return the next `batch_size` examples from this data set."""
+        assert batch_size <= self._num_examples
+
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
         if self._index_in_epoch > self._num_examples:
@@ -256,7 +270,7 @@ class DataSet(object):
             # Start next epoch
             start = 0
             self._index_in_epoch = batch_size
-            assert batch_size <= self._num_examples
+
         end = self._index_in_epoch
         return self._images[start:end], self._labels[start:end]
 

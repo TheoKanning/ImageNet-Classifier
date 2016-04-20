@@ -3,7 +3,7 @@ from input_data import create_datasets
 import numpy as np
 import tensorflow as tf
 
-NUM_IMAGES = 100
+NUM_IMAGES = 41
 
 classes = np.array([["dog", "n02084071"],
                     ["cat", "n02121808"],
@@ -26,7 +26,7 @@ classes = np.array([["dog", "n02084071"],
                     ["door", "n03222176"]
                     ])
 
-classes = classes[3:5]
+classes = classes[13:14]
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
