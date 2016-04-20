@@ -211,8 +211,6 @@ def load_all_images(class_ids, num_images):
             all_images.append(image)
             all_labels.append(create_one_hot_vector(index, num_classes))
 
-        print os.path.join(class_path, files[n])
-
     return np.array(all_images), np.array(all_labels)
 
 

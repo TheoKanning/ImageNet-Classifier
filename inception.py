@@ -3,7 +3,7 @@ from input_data import create_datasets
 import numpy as np
 import tensorflow as tf
 
-NUM_IMAGES = 41
+NUM_IMAGES = 100
 
 classes = np.array([["dog", "n02084071"],
                     ["cat", "n02121808"],
@@ -26,7 +26,6 @@ classes = np.array([["dog", "n02084071"],
                     ["door", "n03222176"]
                     ])
 
-classes = classes[13:14]
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -100,7 +99,7 @@ b_fc3 = bias_variable([num_classes])
 y_conv = tf.nn.softmax(tf.matmul(h_fc2_drop, W_fc3) + b_fc3)
 
 # Training
-cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv))
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
 train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -113,7 +112,9 @@ for i in range(20000):
     if i % 5 == 0:
         train_accuracy = sess.run(accuracy, feed_dict={
             x: image_batch, y_: label_batch, keep_prob: 1.0})
-        print("step %d, training accuracy %g" % (i, train_accuracy))
+        train_cost = sess.run(cross_entropy, feed_dict={
+            x: image_batch, y_: label_batch, keep_prob: 1.0})
+        print("step %d, training accuracy %g, cost %g" % (i, train_accuracy, train_cost))
     else:
         print("step %d" % i)
 
