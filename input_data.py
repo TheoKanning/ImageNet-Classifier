@@ -167,10 +167,14 @@ def load_image_as_array(filepath):
     """
     im = Image.open(filepath)
     if len(np.shape(im)) is 2:
-        ret = np.empty((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=np.uint8)
-        ret[:, :, :] = np.array(im)[:, :, np.newaxis]
-        return ret
-    return np.array(im)
+        array = np.empty((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=np.uint8)
+        array[:, :, :] = np.array(im)[:, :, np.newaxis]
+        return array
+    else:
+        array = np.array(im)
+
+    array = array.astype(np.float32)
+    return (array - array.mean())/array.std()
 
 
 def create_one_hot_vector(index, length):
