@@ -32,6 +32,13 @@ def weight_variable(shape):
     return tf.Variable(initial)
 
 
+def relu_weight_variable(shape):
+    assert len(shape) is 2
+    input_size = shape[0]
+    initial = tf.truncated_normal(shape, stddev=np.sqrt(2.0 / input_size))
+    return tf.Variable(initial)
+
+
 def bias_variable(shape):
     initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
@@ -88,7 +95,7 @@ b_conv5 = bias_variable([128])
 h_conv5 = tf.nn.relu(conv2d(h_conv4, W_conv5, [1, 1, 1, 1]) + b_conv5)
 
 # First fully-connected layer
-W_fc1 = weight_variable([14 * 14 * 128, 512])
+W_fc1 = relu_weight_variable([14 * 14 * 128, 512])
 b_fc1 = bias_variable([512])
 
 h_conv5_flat = tf.reshape(h_conv5, [-1, 14 * 14 * 128])
@@ -98,14 +105,14 @@ keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 # Second fully-connected layer
-W_fc2 = weight_variable([512, 512])
+W_fc2 = relu_weight_variable([512, 512])
 b_fc2 = bias_variable([512])
 
 h_fc2 = tf.nn.relu(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 
 # Third fully-connected layer
-W_fc3 = weight_variable([512, num_classes])
+W_fc3 = relu_weight_variable([512, num_classes])
 b_fc3 = bias_variable([num_classes])
 
 y_score = tf.matmul(h_fc2_drop, W_fc3) + b_fc3
