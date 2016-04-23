@@ -33,7 +33,7 @@ def weight_variable(shape):
 
 
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
+    initial = tf.constant(1.0, shape=shape)
     return tf.Variable(initial)
 
 
@@ -113,7 +113,7 @@ y_logit = tf.nn.softmax(y_score)
 
 # Training
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_logit, y_))
-train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+train_step = tf.train.AdamOptimizer(0.0001).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_logit, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 sess = tf.Session()

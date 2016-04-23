@@ -173,8 +173,7 @@ def load_image_as_array(filepath):
     else:
         array = np.array(im)
 
-    array = array.astype(np.float32)
-    return (array - array.mean())/array.std()
+    return array.astype(np.float32)
 
 
 def create_one_hot_vector(index, length):
@@ -310,6 +309,12 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
 
     train_images = all_images[validation_size + test_size:]
     train_labels = all_labels[validation_size + test_size:]
+
+    # Mean normalization
+    training_mean = np.mean(train_images)
+    train_images -= training_mean
+    validation_images -= training_mean
+    test_images -= training_mean
 
     train_dataset = DataSet(train_images, train_labels)
     validation_dataset = DataSet(validation_images, validation_labels)
