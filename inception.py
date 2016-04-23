@@ -33,7 +33,7 @@ def weight_variable(shape):
 
 
 def bias_variable(shape):
-    initial = tf.constant(1.0, shape=shape)
+    initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
 
 
@@ -101,7 +101,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 W_fc2 = weight_variable([512, 512])
 b_fc2 = bias_variable([512])
 
-h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2)
+h_fc2 = tf.nn.relu(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 
 # Third fully-connected layer

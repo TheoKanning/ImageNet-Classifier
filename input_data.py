@@ -316,6 +316,12 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
     validation_images -= training_mean
     test_images -= training_mean
 
+    # Std dev normalization
+    training_std_dev = np.std(train_images)
+    train_images /= training_std_dev
+    validation_images /= training_std_dev
+    test_images /= training_std_dev
+
     train_dataset = DataSet(train_images, train_labels)
     validation_dataset = DataSet(validation_images, validation_labels)
     test_dataset = DataSet(test_images, test_labels)
