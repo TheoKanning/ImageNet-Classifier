@@ -33,7 +33,7 @@ def weight_variable(shape):
 
 
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
+    initial = tf.zeros(shape)
     return tf.Variable(initial)
 
 
@@ -55,48 +55,61 @@ y_ = tf.placeholder(tf.float32, shape=[None, num_classes])
 
 x_reshaped = tf.reshape(x, [-1, input_data.IMAGE_WIDTH, input_data.IMAGE_HEIGHT, 3])
 
-# First convolutional layer, (224, 224, 3) to (56, 56, 16)
-W_conv1 = weight_variable([11, 11, 3, 16])
-b_conv1 = bias_variable([16])
+# First convolutional layer, (224, 224, 3) to (56, 56, 48)
+W_conv1 = weight_variable([11, 11, 3, 48])
+b_conv1 = bias_variable([48])
 
 h_conv1 = tf.nn.relu(conv2d(x_reshaped, W_conv1, [1, 4, 4, 1]) + b_conv1)
 
-# Second convolutional layer, (56, 56, 16) to (14, 14, 32)
-W_conv2 = weight_variable([5, 5, 16, 32])
-b_conv2 = bias_variable([32])
+# Second convolutional layer, (56, 56, 48) to (28, 28, 128)
+W_conv2 = weight_variable([5, 5, 48, 128])
+b_conv2 = bias_variable([128])
 
-h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2, [1, 2, 2, 1]) + b_conv2)
+h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2, [1, 1, 1, 1]) + b_conv2)
 h_pool2 = max_pool_2x2(h_conv2)
 
-# Third convolutional layer, (14, 14, 32) to (7, 7, 64)
-W_conv3 = weight_variable([3, 3, 32, 64])
-b_conv3 = bias_variable([64])
+# Third convolutional layer, (28, 28, 128) to (14, 14, 192)
+W_conv3 = weight_variable([3, 3, 128, 192])
+b_conv3 = bias_variable([192])
 
 h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3, [1, 1, 1, 1]) + b_conv3)
 h_pool3 = max_pool_2x2(h_conv3)
 
-# First fully-connected layer
-W_fc1 = weight_variable([7 * 7 * 64, 512])
-b_fc1 = bias_variable([512])
+# Fourth convolutional layer, (14, 14, 192) to (14, 14, 192)
+W_conv4 = weight_variable([3, 3, 192, 192])
+b_conv4 = bias_variable([192])
 
-h_pool3_flat = tf.reshape(h_pool3, [-1, 7 * 7 * 64])
-h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
+h_conv4 = tf.nn.relu(conv2d(h_pool3, W_conv4, [1, 1, 1, 1]) + b_conv4)
+
+# Fifth convolutional layer, (14, 14, 192) to (14, 14, 128)
+W_conv5 = weight_variable([3, 3, 192, 128])
+b_conv5 = bias_variable([128])
+
+h_conv5 = tf.nn.relu(conv2d(h_conv4, W_conv5, [1, 1, 1, 1]) + b_conv5)
+
+# First fully-connected layer
+W_fc1 = weight_variable([14 * 14 * 128, 1024])
+b_fc1 = bias_variable([1024])
+
+h_conv5_flat = tf.reshape(h_conv5, [-1, 14 * 14 * 128])
+h_fc1 = tf.nn.relu(tf.matmul(h_conv5_flat, W_fc1) + b_fc1)
 
 keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 # Second fully-connected layer
-W_fc2 = weight_variable([512, 128])
-b_fc2 = bias_variable([128])
+W_fc2 = weight_variable([1024, 1024])
+b_fc2 = bias_variable([1024])
 
 h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2)
 h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 
 # Third fully-connected layer
-W_fc3 = weight_variable([128, num_classes])
+W_fc3 = weight_variable([1024, num_classes])
 b_fc3 = bias_variable([num_classes])
 
-y_conv = tf.nn.softmax(tf.matmul(h_fc2_drop, W_fc3) + b_fc3)
+y_test = tf.matmul(h_fc2_drop, W_fc3) + b_fc3
+y_conv = tf.nn.softmax(y_test)
 
 # Training
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
@@ -114,9 +127,10 @@ for i in range(20000):
             x: image_batch, y_: label_batch, keep_prob: 1.0})
         train_cost = sess.run(cross_entropy, feed_dict={
             x: image_batch, y_: label_batch, keep_prob: 1.0})
+        y_conv_test = sess.run(y_test, feed_dict={
+            x: image_batch, y_: label_batch, keep_prob: 1.0})
         print("step %d, training accuracy %g, cost %g" % (i, train_accuracy, train_cost))
-    else:
-        print("step %d" % i)
+        print y_conv_test
 
 print("test accuracy %g" % sess.run(accuracy, feed_dict={
     x: test_dataset.images, y_: test_dataset.labels, keep_prob: 1.0}))
