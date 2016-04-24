@@ -45,12 +45,21 @@ def bias_variable(shape):
 
 
 def conv2d(x, W, strides):
-    return tf.nn.conv2d(x, W, strides=strides, padding='SAME')
+    return conv_batch_normalization(tf.nn.conv2d(x, W, strides=strides, padding='SAME'))
 
 
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                           strides=[1, 2, 2, 1], padding='SAME')
+
+
+def conv_batch_normalization(x):
+    mean, variance = tf.nn.moments(x, axes=[0, 1, 2])
+    return tf.nn.batch_normalization(x, mean, variance, None, None, 0.0001)
+
+def fc_batch_normalization(x):
+    mean, variance = tf.nn.moments(x, axes=[0])
+    return tf.nn.batch_normalization(x, mean, variance, None, None, 0.0001)
 
 
 train_dataset, val_dataset, test_dataset = create_datasets(classes[:, 1], num_samples=NUM_IMAGES)
@@ -99,7 +108,7 @@ W_fc1 = relu_weight_variable([14 * 14 * 128, 512])
 b_fc1 = bias_variable([512])
 
 h_conv5_flat = tf.reshape(h_conv5, [-1, 14 * 14 * 128])
-h_fc1 = tf.nn.relu(tf.matmul(h_conv5_flat, W_fc1) + b_fc1)
+h_fc1 = tf.nn.relu(fc_batch_normalization(tf.matmul(h_conv5_flat, W_fc1) + b_fc1))
 
 keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
@@ -108,7 +117,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 W_fc2 = relu_weight_variable([512, 512])
 b_fc2 = bias_variable([512])
 
-h_fc2 = tf.nn.relu(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+h_fc2 = tf.nn.relu(fc_batch_normalization(tf.matmul(h_fc1_drop, W_fc2) + b_fc2))
 h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 
 # Third fully-connected layer
@@ -134,14 +143,8 @@ for i in range(100000):
         train_cost = sess.run(cross_entropy, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
         print("step %d, training accuracy %g, cost %g" % (i, train_accuracy, train_cost))
 
-    if i % 50 == 0:
-        y_scores = sess.run(y_score, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
-        print "Scores: ", y_scores[0]
-        y_logits = sess.run(y_logit, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
-        print "Logits: ", y_logits[0]
-
-print("test accuracy %g" % sess.run(accuracy, feed_dict={
-    x: test_dataset.images, y_: test_dataset.labels, keep_prob: 1.0}))
+print("validation set accuracy %g" % sess.run(accuracy, feed_dict={
+    x: val_dataset.images, y_: val_dataset.labels, keep_prob: 1.0}))
 
 
 def main():
