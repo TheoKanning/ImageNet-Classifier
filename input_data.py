@@ -91,12 +91,12 @@ def download_image(url, download_path):
         print "Invalid Image: " + url
         return False
 
-    # # Try opening as array to see if there are any errors
-    # try:
-    #     load_image_as_array(download_path)
-    # except ValueError as e:
-    #     os.remove(download_path)
-    #     return False
+    # Try opening as array to see if there are any errors
+    try:
+        load_image_as_array(download_path)
+    except ValueError as e:
+        os.remove(download_path)
+        return False
 
     return True
 
