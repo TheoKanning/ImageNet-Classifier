@@ -3,7 +3,7 @@ from input_data import create_datasets
 import numpy as np
 import tensorflow as tf
 
-NUM_IMAGES = 100
+NUM_IMAGES = 500
 
 classes = np.array([["dog", "n02084071"],
                     ["cat", "n02121808"],
@@ -57,12 +57,14 @@ def conv_batch_normalization(x):
     mean, variance = tf.nn.moments(x, axes=[0, 1, 2])
     return tf.nn.batch_normalization(x, mean, variance, None, None, 0.0001)
 
+
 def fc_batch_normalization(x):
     mean, variance = tf.nn.moments(x, axes=[0])
     return tf.nn.batch_normalization(x, mean, variance, None, None, 0.0001)
 
 
-train_dataset, val_dataset, test_dataset = create_datasets(classes[:, 1], num_samples=NUM_IMAGES)
+train_dataset, val_dataset, test_dataset = create_datasets(classes[:, 1], num_samples=NUM_IMAGES, val_fraction=0.05,
+                                                           test_fraction=0.05)
 num_classes = len(classes)
 
 # Placeholders
@@ -124,7 +126,7 @@ h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 W_fc3 = relu_weight_variable([512, num_classes])
 b_fc3 = bias_variable([num_classes])
 
-y_score = tf.matmul(h_fc2_drop, W_fc3) + b_fc3
+y_score = fc_batch_normalization(tf.matmul(h_fc2_drop, W_fc3) + b_fc3)
 y_logit = tf.nn.softmax(y_score)
 
 # Training
@@ -135,7 +137,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 sess = tf.Session()
 sess.run(tf.initialize_all_variables())
 
-for i in range(100000):
+for i in range(20000):
     image_batch, label_batch = train_dataset.next_batch(50)
     sess.run(train_step, feed_dict={x: image_batch, y_: label_batch, keep_prob: 0.5})
     if i % 5 == 0:
@@ -143,14 +145,6 @@ for i in range(100000):
         train_cost = sess.run(cross_entropy, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
         print("step %d, training accuracy %g, cost %g" % (i, train_accuracy, train_cost))
 
-print("validation set accuracy %g" % sess.run(accuracy, feed_dict={
-    x: val_dataset.images, y_: val_dataset.labels, keep_prob: 1.0}))
-
-
-def main():
-    ids = classes[:2, 1]
-    input_data.download_dataset(ids, NUM_IMAGES)
-
-
-if __name__ == "__main__":
-    main()
+    # if i % 250:
+    #     print("validation set accuracy %g" % sess.run(accuracy, feed_dict={
+    #         x: val_dataset.images, y_: val_dataset.labels, keep_prob: 1.0}))
