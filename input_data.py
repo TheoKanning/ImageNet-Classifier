@@ -14,6 +14,9 @@ IMAGENET_LINKS_URL = "http://www.image-net.org/api/text/imagenet.synset.geturls?
 IMAGE_DIRECTORY = "ImageNet_data/"
 URL_DIRECTORY = os.path.join(IMAGE_DIRECTORY, "bad_urls")
 
+RAW_IMAGE_HEIGHT = 256
+RAW_IMAGE_WIDTH = 256
+
 IMAGE_HEIGHT = 224
 IMAGE_WIDTH = 224
 
@@ -78,9 +81,9 @@ def download_image(url, download_path):
         if size[0] < IMAGE_WIDTH or size[1] < IMAGE_HEIGHT:  # Image too small
             return False
 
-        resized = resizeimage.resize_cover(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        resized = resizeimage.resize_cover(image, (RAW_IMAGE_WIDTH, RAW_IMAGE_HEIGHT))
         resized.save(download_path, 'jpeg', icc_profile=resized.info.get('icc_profile'))
-    except (IOError, HTTPException, CertificateError) as e:
+    except (IOError, HTTPException, CertificateError, resizeimage.ImageSizeError) as e:
         print e
         return False
 
@@ -167,13 +170,13 @@ def load_image_as_array(filepath):
     """
     im = Image.open(filepath)
     if len(np.shape(im)) is 2:
-        array = np.empty((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=np.uint8)
+        array = np.empty((RAW_IMAGE_HEIGHT, RAW_IMAGE_WIDTH, 3), dtype=np.uint8)
         array[:, :, :] = np.array(im)[:, :, np.newaxis]
         return array
     else:
         array = np.array(im)
 
-    return array.astype(np.float32)
+    return array
 
 
 def create_one_hot_vector(index, length):
@@ -217,6 +220,26 @@ def load_all_images(class_ids, num_images):
     return np.array(all_images), np.array(all_labels)
 
 
+def transform_images(images):
+    """
+    Takes a list of images and gives each random augmentations. Images may be flipped horizontally and randomly cropped to final size0
+    :param images: list of images
+    :return: list of augmented images
+    """
+
+    assert IMAGE_WIDTH <= RAW_IMAGE_WIDTH
+    assert IMAGE_HEIGHT <= RAW_IMAGE_HEIGHT
+
+    transformed = []
+
+    for i in range(0, len(images)):
+        left_padding = np.random.randint(0, RAW_IMAGE_WIDTH - IMAGE_WIDTH)
+        top_padding = np.random.randint(0, RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)
+        transformed.append(images[i][top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH])
+
+    return np.asarray(transformed)
+
+
 class DataSet(object):
     def __init__(self, images, labels):
         """Construct a DataSet using the given images and labels
@@ -255,7 +278,8 @@ class DataSet(object):
         return self._epochs_completed
 
     def next_batch(self, batch_size):
-        """Return the next `batch_size` examples from this data set."""
+        """Return the next `batch_size` examples from this data set.
+        Images are cropped to final image size by selecting a random sample"""
         assert batch_size <= self._num_examples
 
         start = self._index_in_epoch
@@ -273,6 +297,8 @@ class DataSet(object):
             self._index_in_epoch = batch_size
 
         end = self._index_in_epoch
+        raw_images = self._images[start:end]
+
         return self._images[start:end], self._labels[start:end]
 
 
@@ -330,7 +356,8 @@ def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction
 
 
 def main():
-    create_datasets(["n02084071", "n01503061"], 15)
+    images, labels = load_all_images(["n02084071"], 10)
+    transformed = transform_images(images)
 
 
 if __name__ == "__main__":
