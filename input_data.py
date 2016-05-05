@@ -222,7 +222,8 @@ def load_all_images(class_ids, num_images):
 
 def transform_images(images):
     """
-    Takes a list of images and gives each random augmentations. Images may be flipped horizontally and randomly cropped to final size0
+    Takes a list of images and gives each random augmentations. Images may be flipped horizontally and randomly cropped
+    to final size
     :param images: list of images
     :return: list of augmented images
     """
@@ -235,7 +236,12 @@ def transform_images(images):
     for i in range(0, len(images)):
         left_padding = np.random.randint(0, RAW_IMAGE_WIDTH - IMAGE_WIDTH)
         top_padding = np.random.randint(0, RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)
-        transformed.append(images[i][top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH])
+        transformed_image = images[i][top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
+
+        if np.random.ranf() <= 0.5:
+            transformed_image = transformed_image[:, ::-1, :]
+
+        transformed.append(transformed_image)
 
     return np.asarray(transformed)
 
@@ -299,7 +305,7 @@ class DataSet(object):
         end = self._index_in_epoch
         raw_images = self._images[start:end]
 
-        return self._images[start:end], self._labels[start:end]
+        return transform_images(raw_images), self._labels[start:end]
 
 
 def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction=0.1):
