@@ -172,11 +172,10 @@ def load_image_as_array(filepath):
     if len(np.shape(im)) is 2:
         array = np.empty((RAW_IMAGE_HEIGHT, RAW_IMAGE_WIDTH, 3), dtype=np.uint8)
         array[:, :, :] = np.array(im)[:, :, np.newaxis]
-        return array
     else:
         array = np.array(im)
 
-    return array
+    return array.astype(np.float32)
 
 
 def create_one_hot_vector(index, length):
@@ -233,17 +232,21 @@ def transform_images(images):
 
     transformed = []
 
+    images = images.reshape(images.shape[0], RAW_IMAGE_HEIGHT, RAW_IMAGE_WIDTH, 3)
+
     for i in range(0, len(images)):
         left_padding = np.random.randint(0, RAW_IMAGE_WIDTH - IMAGE_WIDTH)
         top_padding = np.random.randint(0, RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)
-        transformed_image = images[i][top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
+        image = images[i]
+        cropped_image = image[top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
 
         if np.random.ranf() <= 0.5:
-            transformed_image = transformed_image[:, ::-1, :]
+            cropped_image = cropped_image[:, ::-1, :]
 
-        transformed.append(transformed_image)
+        transformed.append(cropped_image)
 
-    return np.asarray(transformed)
+    transformed = np.asarray(transformed)
+    return transformed.reshape(transformed.shape[0], IMAGE_HEIGHT*IMAGE_WIDTH, 3)
 
 
 class DataSet(object):
