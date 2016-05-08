@@ -70,3 +70,6 @@ target/
 
 # File system files
 *.DS_Store
+
+# Generated tensorflow files
+tmp/

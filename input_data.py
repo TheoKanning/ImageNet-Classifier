@@ -219,7 +219,7 @@ def load_all_images(class_ids, num_images):
     return np.array(all_images), np.array(all_labels)
 
 
-def transform_images(images):
+def transform_images(images, randomize = False):
     """
     Takes a list of images and gives each random augmentations. Images may be flipped horizontally and randomly cropped
     to final size
@@ -235,14 +235,18 @@ def transform_images(images):
     images = images.reshape(images.shape[0], RAW_IMAGE_HEIGHT, RAW_IMAGE_WIDTH, 3)
 
     for i in range(0, len(images)):
-        left_padding = np.random.randint(0, RAW_IMAGE_WIDTH - IMAGE_WIDTH)
-        top_padding = np.random.randint(0, RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)
         image = images[i]
-        cropped_image = image[top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
+        if randomize:
+            left_padding = np.random.randint(0, RAW_IMAGE_WIDTH - IMAGE_WIDTH)
+            top_padding = np.random.randint(0, RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)
+            cropped_image = image[top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
 
-        if np.random.ranf() <= 0.5:
-            cropped_image = cropped_image[:, ::-1, :]
-
+            if np.random.ranf() <= 0.5:
+                cropped_image = cropped_image[:, ::-1, :]
+        else:
+            left_padding = (RAW_IMAGE_WIDTH - IMAGE_WIDTH)/2
+            top_padding = (RAW_IMAGE_HEIGHT - IMAGE_HEIGHT)/2
+            cropped_image = image[top_padding:top_padding + IMAGE_HEIGHT, left_padding:left_padding + IMAGE_WIDTH]
         transformed.append(cropped_image)
 
     transformed = np.asarray(transformed)
@@ -286,7 +290,7 @@ class DataSet(object):
     def epochs_completed(self):
         return self._epochs_completed
 
-    def next_batch(self, batch_size):
+    def next_batch(self, batch_size, random_crop=False):
         """Return the next `batch_size` examples from this data set.
         Images are cropped to final image size by selecting a random sample"""
         assert batch_size <= self._num_examples
@@ -308,7 +312,7 @@ class DataSet(object):
         end = self._index_in_epoch
         raw_images = self._images[start:end]
 
-        return transform_images(raw_images), self._labels[start:end]
+        return transform_images(raw_images, randomize=random_crop), self._labels[start:end]
 
 
 def create_datasets(class_ids, num_samples=1000, val_fraction=0.1, test_fraction=0.1):

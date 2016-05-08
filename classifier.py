@@ -26,6 +26,8 @@ classes = np.array([["dog", "n02084071"],
                     ["door", "n03222176"]
                     ])
 
+summaries_dir = 'tmp/logs'
+
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -62,6 +64,10 @@ def fc_batch_normalization(x):
     mean, variance = tf.nn.moments(x, axes=[0])
     return tf.nn.batch_normalization(x, mean, variance, None, None, 0.0001)
 
+
+if tf.gfile.Exists(summaries_dir):
+    tf.gfile.DeleteRecursively(summaries_dir)
+tf.gfile.MakeDirs(summaries_dir)
 
 train_dataset, val_dataset, test_dataset = create_datasets(classes[:, 1], num_samples=NUM_IMAGES, val_fraction=0.05,
                                                            test_fraction=0.05)
@@ -131,20 +137,32 @@ y_logit = tf.nn.softmax(y_score)
 
 # Training
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_logit, y_))
+tf.scalar_summary('xentropy', cross_entropy)
 train_step = tf.train.AdamOptimizer(0.0001).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_logit, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+tf.scalar_summary('accuracy', accuracy)
+
 sess = tf.Session()
+merged = tf.merge_all_summaries()
+train_writer = tf.train.SummaryWriter(summaries_dir + '/train', sess.graph)
+val_writer = tf.train.SummaryWriter(summaries_dir + '/val')
 sess.run(tf.initialize_all_variables())
 
+val_images, val_labels = val_dataset.next_batch(200)
+
 for i in range(20000):
-    image_batch, label_batch = train_dataset.next_batch(50)
+    image_batch, label_batch = train_dataset.next_batch(50, random_crop=True)
     sess.run(train_step, feed_dict={x: image_batch, y_: label_batch, keep_prob: 0.5})
     if i % 5 == 0:
-        train_accuracy = sess.run(accuracy, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
+        summary, train_accuracy = sess.run([merged, accuracy],
+                                           feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
+        train_writer.add_summary(summary, i)
         train_cost = sess.run(cross_entropy, feed_dict={x: image_batch, y_: label_batch, keep_prob: 1.0})
         print("step %d, training accuracy %g, cost %g" % (i, train_accuracy, train_cost))
 
-    # if i % 250:
-    #     print("validation set accuracy %g" % sess.run(accuracy, feed_dict={
-    #         x: val_dataset.images, y_: val_dataset.labels, keep_prob: 1.0}))
+    if i % 25 == 0:
+        summary, val_accuracy = sess.run([merged, accuracy], feed_dict={
+            x: val_images, y_: val_labels, keep_prob: 1.0})
+        val_writer.add_summary(summary, i)
+        print("validation set accuracy %g" % val_accuracy)
